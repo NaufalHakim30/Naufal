@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chat</title>
+    <link rel="shortcut icon" href="/statics/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/statics/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/statics/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/statics/css/fa-all.css">
+    <link rel="stylesheet" href="/statics/css/jquery.mCustomScrollbar.min.css">
+    <link rel="stylesheet" href="/statics/css/style.css">
+</head>
+<!--Coded With Love By Mutiullah Samim-->
+<body>
+<div class="container-fluid h-100" id="vueapp">
+    <div aria-live="assertive" role="alert" aria-atomic="true">
+        <div style="position: absolute; top: 20px; right: 20px;">
+            <div role="alert" aria-live="assertive" aria-atomic="true" class="toast" data-autohide="false">
+                <div class="toast-header">
+                    <svg width="20" height="20" class="mr-2" viewBox="0 0 24 24">
+                        <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.91,10.59L6.5,12L11,16.5Z"
+                              fill="#ccc"></path>
+                    </svg>
+                    <strong class="mr-auto">Notification</strong>
+                    {{/*<small>Now</small>*/}}
+                    <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="toast-body">
+                    {% toastMessage %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center h-100">
+        <div class="col-md-4 col-xl-3 chat" v-if="myName == ''">
+            <div class="cardPrompt mb-sm-3">
+                <div class="card-header">
+                    <div class="input-group">
+                        <input id="username" type="text" placeholder="YourName..." name="" class="form-control search"
+                               @keyup.enter="setName" autofocus maxlength="100">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text search_btn"><i class="fas fa-user"></i></span>
+                        </div>
+                    </div>
+                    <div style="text-align: center; padding-top: 10px">
+                        <button class="btn btn-sm" @click="setName">Enter</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8 col-xl-6 chat" v-else>
+            <h2 v-show="!isWebsocketExist" style="text-align: center">WebSocket not exist in this browser</h2>
+            <div class="card">
+                <div class="card-header msg_head">
+                    <div class="d-flex bd-highlight">
+                        <div class="img_cont">
+                            <img src="https://static.turbosquid.com/Preview/001292/481/WV/_D.jpg"
+                                 class="rounded-circle user_img" draggable="false">
+                            <span class="online_icon"></span>
+                        </div>
+                        <div class="user_info">
+                            <span>Group Chat Golang</span>
+                            <p style="cursor:pointer;" data-toggle="modal" data-target="#onlineModal"> {% onlineTotal %}
+                                online <br>
+                                {% this.dataMessage.length %} Messages
+                            </p>
+                        </div>
+                        {{/*<div class="video_cam">
+                            <span><i style="color: darkgray; cursor: not-allowed" class="fas fa-video"></i></span>
+                            <span><i style="color: darkgray; cursor: not-allowed" class="fas fa-phone"></i></span>
+                        </div>*/}}
+                    </div>
+                    <span id="action_menu_btn" @click="$('.action_menu').toggle();"><i class="fas fa-ellipsis-v"></i></span>
+                    <div class="action_menu">
+                        <ul>
+                            <li @click="logout"><i class="fas fa-sign-out-alt"></i> Logout</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card-body msg_card_body">
+                    <template v-for="m in dataMessage">
+                        <div class="d-flex justify-content-end mb-4" v-if="m.sender == myUUID">
+                            <div class="msg_cotainer_send" @click="previewImage(m)">
+                                <span v-html="m.message"></span>
+                                <span class="msg_time_send">{% m.time %}</span>
+                            </div>
+
+                            <div class="img_cont_msg">
+                                <img :src="`https://ui-avatars.com/api/?name=${m.name}`"
+                                     class="rounded-circle user_img_msg"
+                                     draggable="false">
+                                <div class="unsent" @click="unsent(m.message_id)">
+                                    <i class="fas fa-undo"></i>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="d-flex justify-content-start mb-4" v-else>
+                            <div class="img_cont_msg">
+                                <img :src="`https://ui-avatars.com/api/?name=${m.name}`"
+                                     class="rounded-circle user_img_msg"
+                                     draggable="false">
+                            </div>
+                            <div class="msg_cotainer" @click="previewImage(m)">
+                                <span v-html="m.message"></span>
+                                <span class="msg_time">{% m.time %}</span>
+                            </div>
+                        </div>
+                    </template>
+
+
+                </div>
+                <div class="card-footer">
+                    <div class="input-group">
+                        <div class="input-group-append">
+                            <input id="files" type="file" style="display: none" @change="processUpload"
+                                   accept="image/*">
+                            <span @click="$('#files').click()" class="input-group-text attach_btn"><i
+                                        class="fas fa-paperclip"></i></span>
+                        </div>
+                        <textarea v-model="textMessage" class="form-control type_msg" placeholder="Type your message..."
+                                  id="textMessage" @keyup="onPressText" maxlength="1000"
+                                  {{/*@keydown.enter.exact.prevent
+                                  @keyup.enter.exact="sendMessage"
+                                  @keydown.enter.shift.exact="newline"*/}}
+                        ></textarea>
+                        <div class="input-group-append" @click="sendMessage">
+                            <span class="input-group-text send_btn"><i class="fas fa-location-arrow"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Toast -->
+    <div class="modal fade" id="onlineModal" tabindex="-1" role="dialog" aria-labelledby="onlineModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="onlineModalLabel">Online Users</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <ol>
+                        <li v-for="d in onlineData">
+                            {% d.name %} {% d.uuid == myUUID ? '(You)' : '' %}
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal Preview Image -->
+    <div class="modal fade" id="previewImageModal" tabindex="-1" role="dialog" aria-labelledby="previewImageModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>{% previewImageName %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div v-html="previewImageURL"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.register("/sw.js")
+            .then(reg => console.log(reg.scope))
+    }
+</script>
+<script src="/statics/js/jquery.min.js"></script>
+<script src="/statics/js/bootstrap.min.js"></script>
+<script src="/statics/js/bootbox.min.js"></script>
+<script src="/statics/js/jquery.mCustomScrollbar.min.js"></script>
+<script src="/statics/js/browser-image-compression.js"></script>
+<script src="/statics/js/mobile-detect.min.js"></script>
+<script src="/statics/js/vue2.js"></script>
+<script src="/statics/js/idb.js"></script>
+<script src="/statics/js/app.js"></script>
+</body>
+</html>
